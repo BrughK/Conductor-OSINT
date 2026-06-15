@@ -8,6 +8,10 @@ This project was developed to demonstrate practical cybersecurity development sk
 
 The dashboard centralizes open-source intelligence gathering and visualization into a single interface, highlighting concepts commonly used in threat intelligence and security investigations. Through this project, I gained experience with full-stack development, API integration, data processing, and user-focused design while creating a portfolio project that reflects my passion for cybersecurity.
 
+## Quick Demo
+![Alt Text](ConductorDemo1.gif)
+![Alt Text](ConductorDemo2.gif)
+
 ## Table of Contents
 
 - [Tech Stack](#tech-stack)
