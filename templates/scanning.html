@@ -1,0 +1,427 @@
+{% extends "base.html" %} {% block title %}Conductor — Scanning {{ target }}{%
+endblock %} {% block head_extra %}
+<style>
+  .track {
+    position: relative;
+    height: 100px;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+  }
+
+  .rail {
+    position: absolute;
+    bottom: 14px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(20, 33, 61, 0.15);
+  }
+  html.dark .rail {
+    background: rgba(229, 229, 229, 0.15);
+  }
+
+  .rail::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    top: -4px;
+    height: 4px;
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgba(20, 33, 61, 0.25) 0px,
+      rgba(20, 33, 61, 0.25) 8px,
+      transparent 8px,
+      transparent 24px
+    );
+  }
+  html.dark .rail::before {
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgba(229, 229, 229, 0.25) 0px,
+      rgba(229, 229, 229, 0.25) 8px,
+      transparent 8px,
+      transparent 24px
+    );
+  }
+
+  /* Whole train group - moves left to right, engine leads on the right side */
+  .train {
+    position: absolute;
+    bottom: 22px;
+    left: -220px;
+    height: 50px;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  /* ENGINE BODY (cab/boiler) - sits behind the nose cone */
+  .engine-body {
+    position: relative;
+    width: 70px;
+    height: 50px;
+    background: linear-gradient(180deg, #fca311 0%, #e08f0a 50%, #c47a08 100%);
+    border-radius: 4px 4px 0 4px;
+  }
+  .train > .wheels > .wheel:last-child {
+    position: relative;
+    z-index: 2;
+  }
+
+  .engine-window {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 34px;
+    height: 16px;
+    background: #0a111f;
+    border-radius: 3px;
+    opacity: 0.85;
+  }
+
+  /* ENGINE NOSE (boiler front) - rightmost, direction of travel */
+  .engine-nose {
+    position: relative;
+    width: 35px;
+    height: 33px;
+    background: linear-gradient(180deg, #fca311 0%, #e08f0a 50%, #c47a08 100%);
+    border-radius: 0 6px 6px 0;
+  }
+  .engine-nose::before {
+    content: "";
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 6px;
+    height: 65%;
+    background: linear-gradient(180deg, #fca311 0%, #e08f0a 50%, #c47a08 100%);
+    border-radius: 0 6px 3px 0;
+  }
+  .engine-nose::after {
+    content: "";
+    position: absolute;
+    right: -11px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 5px;
+    height: 35%;
+    background: linear-gradient(180deg, #fca311 0%, #e08f0a 50%, #c47a08 100%);
+    border-radius: 0 5px 2px 0;
+  }
+
+  /* Chimney on the boiler */
+  .chimney {
+    position: absolute;
+    top: -14px;
+    right: 10px;
+    width: 10px;
+    height: 14px;
+    background: #14213d;
+    border: 1px solid rgba(229, 229, 229, 0.15);
+    border-radius: 2px;
+  }
+  .chimney::before {
+    content: "";
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 8px solid #f1c47b;
+  }
+
+  .smoke {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #f1c47b;
+    opacity: 0;
+  }
+
+  /* CARS - trail behind (to the left of) the engine in the DOM/flex order */
+  .car {
+    position: relative;
+    width: 65px;
+    height: 40px;
+    background: linear-gradient(180deg, #14213d 0%, #0f1a2f 100%);
+    border: 1px solid rgba(229, 229, 229, 0.12);
+    border-radius: 4px;
+  }
+
+  .car-window {
+    position: absolute;
+    top: 8px;
+    left: 0;
+    right: 0;
+    height: 14px;
+    opacity: 0.9;
+  }
+  .car-window::before,
+  .car-window::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 14px;
+    background: #f1c47b;
+    border-radius: 4px;
+  }
+  .car-window::before {
+    left: 11px;
+  }
+  .car-window::after {
+    right: 11px;
+  }
+
+  /* Coupling joint between cars */
+  .joint {
+    width: 8px;
+    height: 6px;
+    background: #0a111f;
+    border: 1px solid rgba(229, 229, 229, 0.2);
+    border-radius: 2px;
+    margin-bottom: 4px;
+  }
+
+  .wheels {
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    right: 0;
+  }
+  .train > .wheels > .wheel {
+    position: absolute;
+    bottom: 0;
+  }
+  .train > .wheels > .wheel:nth-child(1) {
+    left: 8px;
+  }
+  .train > .wheels > .wheel:nth-child(2) {
+    left: 45px;
+  }
+  .train > .wheels > .wheel:nth-child(3) {
+    left: 81px;
+  }
+  .train > .wheels > .wheel:nth-child(4) {
+    left: 118px;
+  }
+  .train > .wheels > .wheel:nth-child(5) {
+    left: 154px;
+  }
+  .train > .wheels > .wheel:nth-child(6) {
+    left: 196px;
+  }
+  .train > .wheels > .wheel:nth-child(7) {
+    left: 231px;
+  }
+
+  .wheel {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #0a111f;
+    border: 2px solid #fca311;
+  }
+
+  .wheel::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #fca311;
+  }
+
+  .wheel.large {
+    width: 18px;
+    height: 18px;
+  }
+
+  .wheel.large::after {
+    width: 6px;
+    height: 6px;
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="flex flex-col items-center justify-center text-center" style="min-height: calc(100vh - 4rem);">
+  <p class="font-mono text-xs uppercase tracking-widest text-orange mb-2">
+    In Progress
+  </p>
+  <h1
+    class="font-display text-3xl font-semibold text-prussian dark:text-white mb-2"
+  >
+    Scanning <span class="font-mono text-orange">{{ target }}</span>
+  </h1>
+  <div class="track w-full max-w-lg mt-4">
+    <div class="train">
+      <!-- Cars trail behind, on the left -->
+      <div class="car">
+        <div class="car-window"></div>
+      </div>
+      <div class="joint"></div>
+      <div class="car">
+        <div class="car-window"></div>
+      </div>
+      <div class="joint"></div>
+      <!-- Engine body (cab/boiler) - behind the nose -->
+      <div class="engine-body">
+        <div class="engine-window"></div>
+      </div>
+      <!-- Engine nose (boiler front) - rightmost, direction of travel -->
+      <div class="engine-nose">
+        <div class="chimney">
+          <div class="smoke"></div>
+          <div class="smoke"></div>
+          <div class="smoke"></div>
+        </div>
+      </div>
+      <!-- Single wheel holder keeps wheels on the rail -->
+      <div class="wheels">
+        <div class="wheel"></div>
+        <div class="wheel"></div>
+        <div class="wheel"></div>
+        <div class="wheel"></div>
+        <div class="wheel large"></div>
+        <div class="wheel"></div>
+        <div class="wheel"></div>
+      </div>
+    </div>
+    <div class="rail"></div>
+  </div>
+
+  <p
+    id="step-text"
+    class="font-mono text-sm text-prussian/70 dark:text-alabaster/70 mt-4"
+  >
+    Starting scan...
+  </p>
+</div>
+{% endblock %} {% block scripts %}
+<style>
+  /*
+    Animations use !important because Tailwind CDN loads after the <head> <style> block
+    and overrides custom @keyframes. Bottom-of-page styles avoid that ordering issue.
+  */
+  .train {
+    animation: travel 5s linear infinite !important;
+  }
+  .wheel {
+    animation: spin 0.6s linear infinite !important;
+  }
+  .smoke {
+    animation: puff 1.8s ease-out infinite !important;
+  }
+  .smoke:nth-child(2) {
+    animation-delay: 0.6s;
+  }
+  .smoke:nth-child(3) {
+    animation-delay: 1.2s;
+  }
+
+  @keyframes travel {
+    0% {
+      left: -220px;
+    }
+    100% {
+      left: 100%;
+    }
+  }
+  @keyframes spin {
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes puff {
+    0% {
+      opacity: 0.9;
+      transform: translate(-50%, 0) scale(0.6);
+    }
+    70% {
+      opacity: 0.5;
+      transform: translate(-30%, -28px) scale(1.6);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-10%, -40px) scale(2.2);
+    }
+  }
+  @keyframes body-upDown {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-2px);
+    }
+  }
+
+  .engine-nose,
+  .engine-body {
+    animation: body-upDown 0.3s 0s infinite !important;
+  }
+  .car:nth-child(3) {
+    animation: body-upDown 0.3s 0.1s infinite !important;
+  }
+  .car:nth-child(1) {
+    animation: body-upDown 0.3s 0.15s infinite !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .train {
+      animation: none;
+      left: 40%;
+    }
+    .car,
+    .engine-body,
+    .engine-nose {
+      animation: none;
+    }
+    .smoke {
+      animation: none;
+      opacity: 0;
+    }
+    .wheel {
+      animation: none;
+    }
+  }
+</style>
+<script>
+  const scanUuid = "{{ scan_uuid }}";
+
+  function checkStatus() {
+    fetch(`/scan_status/${scanUuid}`)
+      .then((res) => res.json())
+      .then((data) => {
+        document.getElementById("step-text").textContent = data.step;
+
+        if (data.status === "done") {
+          window.location.href = `/scan_result/${scanUuid}`;
+        } else {
+          setTimeout(checkStatus, 1000);
+        }
+      });
+  }
+
+  checkStatus();
+</script>
+{% endblock %}

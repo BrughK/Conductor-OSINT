@@ -1,0 +1,272 @@
+{% extends "base.html" %} {% block title %}Conductor — Dashboard{% endblock %}
+{% block head_extra %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="mb-8">
+  <p class="font-mono text-xs uppercase tracking-widest text-orange mb-1">
+    Dashboard
+  </p>
+  <h1
+    class="font-display text-3xl font-semibold text-prussian dark:text-white mb-2"
+  >
+    Conductor
+  </h1>
+  <p class="text-prussian/60 dark:text-alabaster/60 max-w-xl">
+    Enter a domain to gather WHOIS records, certificate transparency data, DNS
+    records, exposed services, and publicly visible email addresses.
+  </p>
+</div>
+
+{% if error %}
+<div
+  class="mb-6 px-4 py-3 rounded-md border border-orange/40 bg-orange/10 text-orange text-sm font-medium"
+>
+  {{ error }}
+</div>
+{% endif %}
+
+<a href="/scan"
+  class="block w-full py-4 rounded-md bg-orange text-ink font-display font-semibold text-base text-center hover:bg-apricot transition-colors focus:outline-none focus:ring-2 focus:ring-orange/50 mb-8"
+>
+  + New Scan
+</a>
+
+<!-- Primary KPI cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+  <div
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 p-5 bg-white dark:bg-ink"
+  >
+    <p class="font-mono text-3xl font-semibold text-prussian dark:text-white">
+      {{ total_targets }}
+    </p>
+    <p class="font-mono text-xs uppercase tracking-widest text-orange mt-1">
+      Targets
+    </p>
+    <p class="text-xs text-prussian/50 dark:text-alabaster/50 mt-0.5">
+      {{ total_scans }} total scans
+    </p>
+  </div>
+  <div
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 p-5 bg-white dark:bg-ink"
+  >
+    <p class="font-mono text-3xl font-semibold text-prussian dark:text-white">
+      {{ total_dns }}
+    </p>
+    <p class="font-mono text-xs uppercase tracking-widest text-orange mt-1">
+      DNS Records
+    </p>
+    <p class="text-xs text-prussian/50 dark:text-alabaster/50 mt-0.5">
+      A, AAAA, MX, TXT, NS, CNAME
+    </p>
+  </div>
+  <div
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 p-5 bg-white dark:bg-ink"
+  >
+    <p class="font-mono text-3xl font-semibold text-prussian dark:text-white">
+      {{ total_subdomains }}
+    </p>
+    <p class="font-mono text-xs uppercase tracking-widest text-orange mt-1">
+      Subdomains
+    </p>
+    <p class="text-xs text-prussian/50 dark:text-alabaster/50 mt-0.5">
+      Certificate transparency
+    </p>
+  </div>
+</div>
+
+<!-- Last Target spotlight -->
+{% if last_scan %}
+<div
+  class="rounded-md border border-prussian/10 dark:border-alabaster/10 p-5 bg-white dark:bg-ink mb-4"
+>
+  <p class="font-mono text-xs uppercase tracking-widest text-orange mb-3">Last Scan</p>
+  <div class="flex items-center justify-between flex-wrap gap-2">
+    <div class="flex items-center gap-3 min-w-0">
+      <span class="w-2 h-2 rounded-full bg-orange shrink-0"></span>
+      <p
+        class="font-mono text-lg font-medium text-prussian dark:text-white break-all"
+      >
+        {{ last_scan.target }}
+      </p>
+    </div>
+    <a
+      href="/history/{{ last_scan.id }}"
+      class="shrink-0 inline-block px-3 py-1.5 rounded text-xs font-medium bg-orange/10 text-orange hover:bg-orange/20 transition-colors"
+    >
+      View Results &rarr;
+    </a>
+  </div>
+  <p class="text-xs text-prussian/50 dark:text-alabaster/50 mt-2 ml-5">
+    Last scanned {{ last_scan.scan_date }}
+  </p>
+</div>
+{% endif %}
+
+<!-- Recent Scans table -->
+<div
+  class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink mb-4"
+>
+  <div
+    class="px-5 py-3 flex items-center justify-between border-b border-prussian/10 dark:border-alabaster/10"
+  >
+    <p class="font-mono text-xs uppercase tracking-widest text-orange">
+      Recent Scans
+    </p>
+    <a
+      href="/history"
+      class="text-xs font-medium text-orange hover:text-apricot transition-colors"
+      >View All &rarr;</a
+    >
+  </div>
+  {% if recent_scans %}
+  <table class="w-full text-sm">
+    <tbody class="divide-y divide-prussian/5 dark:divide-alabaster/5">
+      {% for s in recent_scans %}
+      <tr class="hover:bg-prussian/5 dark:hover:bg-white/5 transition-colors">
+        <td class="px-5 py-3 font-mono text-prussian dark:text-white">
+          {{ s.target }}
+        </td>
+        <td
+          class="px-5 py-3 font-mono text-xs text-prussian/50 dark:text-alabaster/50 text-right"
+        >
+          {{ s.scan_date }}
+        </td>
+        <td class="px-5 py-3 text-right">
+          <a
+            href="/history/{{ s.id }}"
+            class="inline-block px-3 py-1 rounded text-xs font-medium bg-orange/10 text-orange hover:bg-orange/20 transition-colors"
+            >View</a
+          >
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div
+    class="px-5 py-8 text-center text-sm text-prussian/50 dark:text-alabaster/50"
+  >
+    No scans yet. Enter a domain above to get started.
+  </div>
+  {% endif %}
+</div>
+
+<!-- Data visualizations -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+  <!-- Services donut -->
+  <div class="rounded-md border border-prussian/10 dark:border-alabaster/10 p-5 bg-white dark:bg-ink">
+    <p class="font-mono text-xs uppercase tracking-widest text-orange mb-3">Services Found</p>
+    <div class="flex items-center justify-center">
+      {% if top_services %}
+      <canvas id="servicesChart" width="200" height="200" style="max-height: 200px;"></canvas>
+      {% else %}
+      <p class="text-sm text-prussian/50 dark:text-alabaster/50 py-8">No services discovered yet.</p>
+      {% endif %}
+    </div>
+  </div>
+  <!-- DNS breakdown bars -->
+  <div class="rounded-md border border-prussian/10 dark:border-alabaster/10 p-5 bg-white dark:bg-ink">
+    <p class="font-mono text-xs uppercase tracking-widest text-orange mb-3">DNS Records by Type</p>
+    {% if dns_breakdown %}
+    <div class="space-y-2">
+      {% for row in dns_breakdown %}
+      <div>
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span class="font-mono font-medium text-prussian dark:text-alabaster">{{ row.record_type }}</span>
+          <span class="font-mono text-prussian/60 dark:text-alabaster/60">{{ row.cnt }}</span>
+        </div>
+        <div class="h-4 rounded bg-prussian/10 dark:bg-white/10 overflow-hidden">
+          <div class="h-full rounded bg-orange transition-all" style="width: {{ (row.cnt / max_dns * 100) | round }}%;"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-prussian/50 dark:text-alabaster/50 py-8">No DNS records indexed yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Secondary KPI cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+  <div
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 p-5 bg-white dark:bg-ink"
+  >
+    <p class="font-mono text-3xl font-semibold text-apricot">
+      {{ total_services }}
+    </p>
+    <p class="font-mono text-xs uppercase tracking-widest text-orange mt-1">
+      Services
+    </p>
+    <p class="text-xs text-prussian/50 dark:text-alabaster/50 mt-0.5">
+      Shodan (demo)
+    </p>
+  </div>
+  <div
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 p-5 bg-white dark:bg-ink"
+  >
+    <p class="font-mono text-3xl font-semibold text-prussian dark:text-white">
+      {{ total_emails }}
+    </p>
+    <p class="font-mono text-xs uppercase tracking-widest text-orange mt-1">
+      Emails
+    </p>
+    <p class="text-xs text-prussian/50 dark:text-alabaster/50 mt-0.5">
+      Harvested
+    </p>
+  </div>
+  <div
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 p-5 bg-white dark:bg-ink"
+  >
+    <p class="font-mono text-3xl font-semibold text-prussian dark:text-white">
+      {{ scans_today }}
+    </p>
+    <p class="font-mono text-xs uppercase tracking-widest text-orange mt-1">
+      Today
+    </p>
+    <p class="text-xs text-prussian/50 dark:text-alabaster/50 mt-0.5">
+      Scans in last 24h
+    </p>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% if top_services %}
+<script>
+  (function() {
+    const services = {{ top_services | tojson }};
+    const isDark = () => document.documentElement.classList.contains("dark");
+    const chartTextColor = () => isDark() ? "#e5e5e5" : "#14213d";
+    const palette = ["#fcd79c", "#f0c175", "#fbc36a", "#f2ae40", "#fab038", "#e69719", "#bf7b0d"];
+    new Chart(document.getElementById("servicesChart"), {
+      type: "doughnut",
+      data: {
+        labels: services.map(s => s.service),
+        datasets: [{
+          data: services.map(s => s.cnt),
+          backgroundColor: palette.slice(0, services.length),
+          borderColor: isDark() ? "#0a111f" : "#ffffff",
+          borderWidth: 2,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "65%",
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: {
+              color: chartTextColor(),
+              boxWidth: 14,
+              font: { size: 11 },
+            },
+          },
+        },
+      },
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

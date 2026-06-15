@@ -1,0 +1,530 @@
+{% extends "base.html" %}
+{% block title %}Conductor — {{ details.target }}{% endblock %}
+{% block head_extra %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+{% endblock %}
+{% block content %}
+<div
+  class="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4"
+>
+  <div>
+    <p class="font-mono text-xs uppercase tracking-widest text-orange mb-1">
+      Archived Scan
+    </p>
+    <h1
+      class="font-display text-3xl font-semibold text-prussian dark:text-white font-mono"
+    >
+      {{ details.target }}
+    </h1>
+    <p class="text-xs font-mono text-prussian/50 dark:text-alabaster/50 mt-1">
+      Scanned {{ details.scan_date }}
+    </p>
+  </div>
+  <div class="flex gap-2">
+    <a
+      href="/history"
+      class="px-3 py-2 rounded-md text-xs font-medium border border-prussian/15 dark:border-alabaster/15 text-prussian/70 dark:text-alabaster/70 hover:bg-prussian/5 dark:hover:bg-white/5 transition-colors"
+    >
+      &larr; Back
+    </a>
+    <a
+      href="/export/{{ scan_id }}/csv"
+      class="px-3 py-2 rounded-md text-xs font-medium bg-prussian/10 dark:bg-alabaster/10 text-prussian dark:text-white hover:bg-prussian/20 dark:hover:bg-alabaster/20 transition-colors"
+    >
+      Export CSV
+    </a>
+    <a
+      href="/export/{{ scan_id }}/pdf"
+      class="px-3 py-2 rounded-md text-xs font-medium bg-orange/10 text-orange hover:bg-orange/20 transition-colors"
+    >
+      Export PDF
+    </a>
+  </div>
+</div>
+
+<!-- Diff vs previous scan -->
+{% if diff %}
+<section
+  class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden mb-8 bg-white dark:bg-ink"
+>
+  <div
+    class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+  >
+    Changes Since Previous Scan
+    <span class="font-mono text-prussian/50 dark:text-alabaster/50 text-xs ml-2"
+      >({{ diff.previous_scan_date }})</span
+    >
+  </div>
+  <div class="p-5 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm">
+    <div>
+      <p
+        class="text-xs uppercase tracking-wider text-prussian/50 dark:text-alabaster/50 mb-2"
+      >
+        Subdomains
+      </p>
+      {% if diff.new_subdomains %}
+      <ul class="font-mono flex flex-col gap-1 mb-2">
+        {% for s in diff.new_subdomains %}
+        <li class="text-apricot">+ {{ s }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %} {% if diff.removed_subdomains %}
+      <ul class="font-mono flex flex-col gap-1">
+        {% for s in diff.removed_subdomains %}
+        <li class="text-prussian/40 dark:text-alabaster/40 line-through">
+          - {{ s }}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %} {% if not diff.new_subdomains and not diff.removed_subdomains
+      %}
+      <p class="text-prussian/40 dark:text-alabaster/40 font-mono">
+        No changes
+      </p>
+      {% endif %}
+    </div>
+
+    <div>
+      <p
+        class="text-xs uppercase tracking-wider text-prussian/50 dark:text-alabaster/50 mb-2"
+      >
+        DNS Records
+      </p>
+      {% if not diff.dns_diff_available %}
+      <p class="text-prussian/40 dark:text-alabaster/40 font-mono text-xs">
+        DNS tracking started this scan — no prior data to compare.
+      </p>
+      {% else %} {% if diff.new_dns %}
+      <ul class="font-mono flex flex-col gap-1 mb-2">
+        {% for d in diff.new_dns %}
+        <li class="text-apricot">+ {{ d }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %} {% if diff.removed_dns %}
+      <ul class="font-mono flex flex-col gap-1 mb-2">
+        {% for d in diff.removed_dns %}
+        <li class="text-prussian/40 dark:text-alabaster/40 line-through">
+          - {{ d }}
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %} {% if diff.new_txt or diff.removed_txt %}
+      <details class="mt-2">
+        <summary
+          class="cursor-pointer text-xs text-prussian/50 dark:text-alabaster/50 hover:text-orange transition-colors"
+        >
+          TXT record changes ({{ (diff.new_txt|length) +
+          (diff.removed_txt|length) }})
+        </summary>
+        <ul
+          class="font-mono flex flex-col gap-1 mt-2 max-h-40 overflow-y-auto thin-scroll break-all"
+        >
+          {% for d in diff.new_txt %}
+          <li class="text-apricot">+ {{ d }}</li>
+          {% endfor %} {% for d in diff.removed_txt %}
+          <li class="text-prussian/40 dark:text-alabaster/40 line-through">
+            - {{ d }}
+          </li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %} {% if not diff.new_dns and not diff.removed_dns and not
+      diff.new_txt and not diff.removed_txt %}
+      <p class="text-prussian/40 dark:text-alabaster/40 font-mono">
+        No changes
+      </p>
+      {% endif %} {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<div class="flex flex-col gap-6">
+  <!-- WHOIS -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+    >
+      WHOIS Information
+    </div>
+    <div class="p-5">
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            Registrar
+          </dt>
+          <dd class="font-mono">{{ details.whois.registrar }}</dd>
+        </div>
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            Name Servers
+          </dt>
+          <dd class="font-mono break-all">{{ details.whois.name_servers }}</dd>
+        </div>
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            Created
+          </dt>
+          <dd class="font-mono">{{ details.whois.creation_date }}</dd>
+        </div>
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            Expires
+          </dt>
+          <dd class="font-mono">{{ details.whois.expiration_date }}</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- DNS -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+    >
+      DNS Records
+    </div>
+    <div class="p-5">
+      {% if details.dns and details.dns.error %}
+      <p class="text-orange text-sm font-mono">
+        Error: {{ details.dns.error }}
+      </p>
+      {% elif details.dns %}
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4">
+        {% for record_type in ['A', 'AAAA', 'MX', 'NS', 'CNAME'] %}
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            {{ record_type }}
+          </dt>
+          {% if details.dns.records[record_type] %}
+          <dd class="font-mono break-all flex flex-col gap-1">
+            {% for v in details.dns.records[record_type] %}
+            <span>{{ v }}</span>
+            {% endfor %}
+          </dd>
+          {% else %}
+          <dd class="font-mono text-prussian/40 dark:text-alabaster/40">
+            None found
+          </dd>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </dl>
+
+      <div>
+        <p
+          class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+        >
+          TXT
+        </p>
+        {% if details.dns.records.TXT %}
+        <ul
+          class="max-h-40 overflow-y-auto thin-scroll flex flex-col gap-1.5 font-mono text-sm break-all"
+        >
+          {% for v in details.dns.records.TXT %}
+          <li class="text-prussian/80 dark:text-alabaster/80">{{ v }}</li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="font-mono text-prussian/40 dark:text-alabaster/40">
+          None found
+        </p>
+        {% endif %}
+      </div>
+      {% else %}
+      <p class="text-sm text-prussian/60 dark:text-alabaster/60">
+        No DNS data recorded for this scan.
+      </p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Shodan -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+    >
+      Exposed Services (Shodan)
+    </div>
+    <div class="p-5">
+      {% if details.shodan %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm font-mono">
+          <thead>
+            <tr
+              class="text-left text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider"
+            >
+              <th class="pb-2 pr-4">IP</th>
+              <th class="pb-2 pr-4">Port</th>
+              <th class="pb-2 pr-4">Service</th>
+              <th class="pb-2">Banner</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-prussian/5 dark:divide-alabaster/5">
+            {% for r in details.shodan %}
+            <tr>
+              <td class="py-2 pr-4">{{ r.ip }}</td>
+              <td class="py-2 pr-4">{{ r.port }}</td>
+              <td class="py-2 pr-4 text-apricot">{{ r.service }}</td>
+              <td class="py-2">{{ r.banner }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-sm text-prussian/60 dark:text-alabaster/60">
+        No results found.
+      </p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Certificates -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+    >
+      Certificates &amp; Subdomains
+      <span class="font-mono text-orange">({{ details.certs|length }})</span>
+    </div>
+    <div class="p-5">
+      {% if details.certs %}
+      <ul
+        class="max-h-72 overflow-y-auto thin-scroll divide-y divide-prussian/5 dark:divide-alabaster/5 font-mono text-sm"
+      >
+        {% for c in details.certs %}
+        <li class="py-1.5 flex items-center justify-between group">
+          <span>{{ c.subdomain }}</span>
+          <button
+            onclick="copyToClipboard('{{ c.subdomain }}')"
+            class="opacity-0 group-hover:opacity-100 transition-opacity text-prussian/40 dark:text-alabaster/40 hover:text-orange ml-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path
+                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              />
+            </svg>
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-sm text-prussian/60 dark:text-alabaster/60">
+        No certificate data recorded for this scan.
+      </p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Emails -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+    >
+      Exposed Emails
+    </div>
+    <div class="p-5">
+      {% if details.emails %}
+      <ul class="flex flex-col gap-2 font-mono text-sm">
+        {% for e in details.emails %}
+        <li class="flex items-center gap-2 group">
+          {{ e.email }}
+          <span
+            class="px-2 py-0.5 rounded text-xs uppercase tracking-wider bg-prussian/10 dark:bg-alabaster/10 text-prussian/70 dark:text-alabaster/70 font-body"
+          >
+            {{ e.source }}
+          </span>
+          <button
+            onclick="copyToClipboard('{{ e.email }}')"
+            class="opacity-0 group-hover:opacity-100 transition-opacity text-prussian/40 dark:text-alabaster/40 hover:text-orange"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path
+                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              />
+            </svg>
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-sm text-prussian/60 dark:text-alabaster/60">
+        No exposed emails found.
+      </p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <section
+      class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+    >
+      <div
+        class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+      >
+        Services Found
+      </div>
+      <div class="p-5">
+        <div style="position: relative; height: 280px">
+          <canvas id="servicesChart"></canvas>
+        </div>
+      </div>
+    </section>
+    <section
+      class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+    >
+      <div
+        class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+      >
+        Top Certificate Issuers
+      </div>
+      <div class="p-5">
+        <div style="position: relative; height: 280px">
+          <canvas id="issuersChart"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Trend -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+    >
+      Subdomain Count Trend
+    </div>
+    <div class="p-5">
+      <div style="position: relative; height: 280px">
+        <canvas id="trendChart"></canvas>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  const chartData = {{ chart_data | tojson }};
+
+  function isDark() {
+      return document.documentElement.classList.contains('dark');
+  }
+  function chartTextColor() {
+      return isDark() ? '#e5e5e5' : '#14213d';
+  }
+  function chartGridColor() {
+      return isDark() ? 'rgba(229,229,229,0.08)' : 'rgba(20,33,61,0.08)';
+  }
+
+  new Chart(document.getElementById('servicesChart'), {
+      type: 'bar',
+      data: {
+          labels: chartData.services.labels,
+          datasets: [{
+              label: 'Count',
+              data: chartData.services.data,
+              backgroundColor: '#fca311',
+              borderRadius: 4,
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+              y: { beginAtZero: true, ticks: { color: chartTextColor() }, grid: { color: chartGridColor() } },
+              x: { ticks: { color: chartTextColor() }, grid: { display: false } }
+          },
+          plugins: { legend: { labels: { color: chartTextColor() } } }
+      }
+  });
+
+  new Chart(document.getElementById('issuersChart'), {
+      type: 'pie',
+      data: {
+          labels: chartData.issuers.labels,
+          datasets: [{
+              data: chartData.issuers.data,
+              backgroundColor: ['#fca311', '#f1c47b', '#9c5809', '#d97706', '#fde68a'],
+              borderColor: isDark() ? '#0a111f' : '#ffffff',
+              borderWidth: 2,
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+              legend: { position: 'bottom', labels: { color: chartTextColor(), boxWidth: 14, font: { size: 11 } } }
+          }
+      }
+  });
+
+  new Chart(document.getElementById('trendChart'), {
+      type: 'line',
+      data: {
+          labels: chartData.trend.labels,
+          datasets: [{
+              label: 'Subdomains found',
+              data: chartData.trend.data,
+              borderColor: '#fca311',
+              backgroundColor: 'rgba(252, 163, 17, 0.15)',
+              tension: 0.3,
+              fill: true,
+              pointBackgroundColor: '#fca311',
+          }]
+      },
+      options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+              y: { beginAtZero: true, ticks: { color: chartTextColor() }, grid: { color: chartGridColor() } },
+              x: { ticks: { color: chartTextColor() }, grid: { display: false } }
+          },
+          plugins: { legend: { labels: { color: chartTextColor() } } }
+      }
+  });
+</script>
+{% endblock %}

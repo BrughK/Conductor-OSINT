@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Conductor — Scan History{% endblock %}
+{% block content %}
+<div class="mb-8">
+  <p class="font-mono text-xs uppercase tracking-widest text-orange mb-1">
+    Archive
+  </p>
+  <h1 class="font-display text-3xl font-semibold text-prussian dark:text-white">
+    Scan History
+  </h1>
+</div>
+
+{% if scans %}
+<div
+  class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+>
+  <table class="w-full text-sm">
+    <thead>
+      <tr
+        class="text-left text-xs uppercase tracking-wider text-prussian/50 dark:text-alabaster/50 border-b border-prussian/10 dark:border-alabaster/10"
+      >
+        <th class="px-5 py-3">Target</th>
+        <th class="px-5 py-3">Date (UTC)</th>
+        <th class="px-5 py-3"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-prussian/5 dark:divide-alabaster/5">
+      {% for s in scans %}
+      <tr class="hover:bg-prussian/5 dark:hover:bg-white/5 transition-colors">
+        <td class="px-5 py-3 font-mono">{{ s.target }}</td>
+        <td class="px-5 py-3 font-mono text-prussian/60 dark:text-alabaster/60">
+          {{ s.scan_date }}
+        </td>
+        <td class="px-5 py-3 text-right">
+          <a
+            href="/history/{{ s.id }}"
+            class="inline-block px-3 py-1 rounded text-xs font-medium bg-orange/10 text-orange hover:bg-orange/20 transition-colors"
+          >
+            View
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<form
+  action="/history/delete_all"
+  method="POST"
+  onsubmit="return confirm('Delete all scans and their results? This action cannot be undone.')"
+  class="mt-6 text-center"
+>
+  <button
+    type="submit"
+    class="px-4 py-2 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-colors cursor-pointer"
+  >
+    Delete All Scans
+  </button>
+</form>
+{% else %}
+<p class="text-sm text-prussian/60 dark:text-alabaster/60">
+  No scans yet. Run your first scan from the home page.
+</p>
+{% endif %}
+{% block scripts %}
+{% if request.args.get('deleted') %}
+<script>showToast("History cleared!", "success");</script>
+{% endif %}
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,466 @@
+{% extends "base.html" %} {% block title %}Conductor — Results for {{ target
+}}{% endblock %} {% block head_extra %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+{% endblock %} {% block content %}
+<div class="mb-8">
+  <p class="font-mono text-xs uppercase tracking-widest text-orange mb-1">
+    Scan Results
+  </p>
+  <h1
+    class="font-display text-3xl font-semibold text-prussian dark:text-white font-mono"
+  >
+    {{ target }}
+  </h1>
+</div>
+
+<div class="flex flex-col gap-6">
+  <!-- WHOIS -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+    >
+      WHOIS Information
+    </div>
+    <div class="p-5">
+      {% if whois.error %}
+      <p class="text-orange text-sm font-mono">Error: {{ whois.error }}</p>
+      {% else %}
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            Registrar
+          </dt>
+          <dd class="font-mono">{{ whois.registrar }}</dd>
+        </div>
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            Name Servers
+          </dt>
+          <dd class="font-mono break-all">{{ whois.name_servers }}</dd>
+        </div>
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            Created
+          </dt>
+          <dd class="font-mono">{{ whois.creation_date }}</dd>
+        </div>
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            Expires
+          </dt>
+          <dd class="font-mono">{{ whois.expiration_date }}</dd>
+        </div>
+      </dl>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- DNS -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+    >
+      DNS Records
+    </div>
+    <div class="p-5">
+      {% if dns.error %}
+      <p class="text-orange text-sm font-mono">Error: {{ dns.error }}</p>
+      {% else %}
+      <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4">
+        {% for record_type in ['A', 'AAAA', 'MX', 'NS', 'CNAME'] %}
+        <div>
+          <dt
+            class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+          >
+            {{ record_type }}
+          </dt>
+          {% if dns.records[record_type] %}
+          <dd class="font-mono break-all flex flex-col gap-1">
+            {% for v in dns.records[record_type] %}
+            <span>{{ v }}</span>
+            {% endfor %}
+          </dd>
+          {% else %}
+          <dd class="font-mono text-prussian/40 dark:text-alabaster/40">
+            None found
+          </dd>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </dl>
+
+      <!-- TXT records get their own full-width, scrollable block -->
+      <div>
+        <p
+          class="text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider mb-1"
+        >
+          TXT
+        </p>
+        {% if dns.records.TXT %}
+        <ul
+          class="max-h-40 overflow-y-auto thin-scroll flex flex-col gap-1.5 font-mono text-sm break-all"
+        >
+          {% for v in dns.records.TXT %}
+          <li class="text-prussian/80 dark:text-alabaster/80">{{ v }}</li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="font-mono text-prussian/40 dark:text-alabaster/40">
+          None found
+        </p>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Shodan -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 flex items-center justify-between"
+    >
+      <span class="font-display font-semibold text-sm"
+        >Exposed Services (Shodan)</span
+      >
+      {% if shodan.mocked %}
+      <span
+        class="px-2 py-0.5 rounded text-xs font-mono uppercase tracking-wider bg-apricot/20 text-apricot"
+      >
+        Demo Data
+      </span>
+      {% endif %}
+    </div>
+    <div class="p-5">
+      {% if shodan.error %}
+      <p class="text-orange text-sm font-mono">Error: {{ shodan.error }}</p>
+      {% elif shodan.results %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm font-mono">
+          <thead>
+            <tr
+              class="text-left text-prussian/50 dark:text-alabaster/50 text-xs uppercase tracking-wider"
+            >
+              <th class="pb-2 pr-4">IP</th>
+              <th class="pb-2 pr-4">Port</th>
+              <th class="pb-2 pr-4">Service</th>
+              <th class="pb-2">Banner</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-prussian/5 dark:divide-alabaster/5">
+            {% for r in shodan.results %}
+            <tr>
+              <td class="py-2 pr-4">{{ r.ip }}</td>
+              <td class="py-2 pr-4">{{ r.port }}</td>
+              <td class="py-2 pr-4 text-apricot">{{ r.service }}</td>
+              <td class="py-2">{{ r.banner }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-sm text-prussian/60 dark:text-alabaster/60">
+        No results found.
+      </p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Certificates -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 flex items-center justify-between"
+    >
+      <span class="font-display font-semibold text-sm">
+        Certificates &amp; Subdomains
+        <span class="font-mono text-orange" id="cert-count"
+          >({{ certs.certs|length }})</span
+        >
+      </span>
+      {% if certs.error %}
+      <button
+        id="retry-certs-btn"
+        onclick="retryCerts()"
+        class="px-3 py-1 rounded text-xs font-medium bg-orange/10 text-orange hover:bg-orange/20 transition-colors"
+      >
+        Retry crt.sh
+      </button>
+      {% endif %}
+    </div>
+    <div class="p-5" id="cert-body">
+      {% if certs.error %}
+      <p class="text-orange text-sm font-mono" id="cert-error">
+        Error: {{ certs.error }}
+      </p>
+      {% else %}
+      <ul
+        class="max-h-72 overflow-y-auto thin-scroll divide-y divide-prussian/5 dark:divide-alabaster/5 font-mono text-sm"
+        id="cert-list"
+      >
+        {% for c in certs.certs %}
+        <li class="py-1.5 flex items-center justify-between group">
+          <span>{{ c.subdomain }}</span>
+          <button
+            onclick="copyToClipboard('{{ c.subdomain }}')"
+            class="opacity-0 group-hover:opacity-100 transition-opacity text-prussian/40 dark:text-alabaster/40 hover:text-orange ml-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path
+                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              />
+            </svg>
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Emails -->
+  <section
+    class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+  >
+    <div
+      class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+    >
+      Exposed Emails
+    </div>
+    <div class="p-5">
+      {% if emails.error %}
+      <p class="text-orange text-sm font-mono">Error: {{ emails.error }}</p>
+      {% elif emails.emails %}
+      <ul class="flex flex-col gap-2 font-mono text-sm">
+        {% for e in emails.emails %}
+        <li class="flex items-center gap-2 group">
+          {{ e.email }}
+          <span
+            class="px-2 py-0.5 rounded text-xs uppercase tracking-wider bg-prussian/10 dark:bg-alabaster/10 text-prussian/70 dark:text-alabaster/70 font-body"
+          >
+            {{ e.source }}
+          </span>
+          <button
+            onclick="copyToClipboard('{{ e.email }}')"
+            class="opacity-0 group-hover:opacity-100 transition-opacity text-prussian/40 dark:text-alabaster/40 hover:text-orange"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path
+                d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              />
+            </svg>
+          </button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-sm text-prussian/60 dark:text-alabaster/60">
+        No exposed emails found.
+      </p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Charts -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <section
+      class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+    >
+      <div
+        class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+      >
+        Services Found
+      </div>
+      <div class="p-5">
+        <div style="position: relative; height: 280px">
+          <canvas id="servicesChart"></canvas>
+        </div>
+      </div>
+    </section>
+    <section
+      class="rounded-md border border-prussian/10 dark:border-alabaster/10 overflow-hidden bg-white dark:bg-ink"
+    >
+      <div
+        class="px-5 py-3 border-b border-prussian/10 dark:border-alabaster/10 font-display font-semibold text-sm"
+      >
+        Top Certificate Issuers
+      </div>
+      <div class="p-5">
+        <div style="position: relative; height: 280px">
+          <canvas id="issuersChart"></canvas>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endblock %} {% block scripts %}
+<script>
+  let issuersChart;
+
+  // Theme-aware chart colors
+  function isDark() {
+    return document.documentElement.classList.contains("dark");
+  }
+  function chartTextColor() {
+    return isDark() ? "#e5e5e5" : "#14213d";
+  }
+  function chartGridColor() {
+    return isDark() ? "rgba(229,229,229,0.08)" : "rgba(20,33,61,0.08)";
+  }
+
+  fetch(`/chart_data/{{ scan_uuid }}`)
+    .then((res) => res.json())
+    .then((data) => {
+      new Chart(document.getElementById("servicesChart"), {
+        type: "bar",
+        data: {
+          labels: data.services.labels,
+          datasets: [
+            {
+              label: "Count",
+              data: data.services.data,
+              backgroundColor: "#fca311",
+              borderRadius: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { color: chartTextColor() },
+              grid: { color: chartGridColor() },
+            },
+            x: { ticks: { color: chartTextColor() }, grid: { display: false } },
+          },
+          plugins: {
+            legend: { labels: { color: chartTextColor() } },
+          },
+        },
+      });
+
+      issuersChart = new Chart(document.getElementById("issuersChart"), {
+        type: "pie",
+        data: {
+          labels: data.issuers.labels,
+          datasets: [
+            {
+              data: data.issuers.data,
+              backgroundColor: [
+                "#fca311",
+                "#f1c47b",
+                "#9c5809",
+                "#d97706",
+                "#fde68a",
+              ],
+              borderColor: isDark() ? "#0a111f" : "#ffffff",
+              borderWidth: 2,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                color: chartTextColor(),
+                boxWidth: 14,
+                font: { size: 11 },
+              },
+            },
+          },
+        },
+      });
+    });
+
+  function retryCerts() {
+    const btn = document.getElementById("retry-certs-btn");
+    btn.disabled = true;
+    btn.textContent = "Retrying...";
+
+    fetch(`/retry_certs/{{ scan_uuid }}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const body = document.getElementById("cert-body");
+        const countSpan = document.getElementById("cert-count");
+
+        if (data.error) {
+          body.innerHTML = `<p class="text-orange text-sm font-mono">Error: ${data.error}</p>`;
+          btn.disabled = false;
+          btn.textContent = "Retry crt.sh";
+        } else {
+          countSpan.textContent = `(${data.certs.length})`;
+
+          let listHtml =
+            '<ul class="max-h-72 overflow-y-auto thin-scroll divide-y divide-prussian/5 dark:divide-alabaster/5 font-mono text-sm" id="cert-list">';
+          data.certs.forEach((c) => {
+            listHtml += `
+                        <li class="py-1.5 flex items-center justify-between group">
+                            <span>${c.subdomain}</span>
+                            <button onclick="copyToClipboard('${c.subdomain}')"
+                                    class="opacity-0 group-hover:opacity-100 transition-opacity text-prussian/40 dark:text-alabaster/40 hover:text-orange ml-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                </svg>
+                            </button>
+                        </li>`;
+          });
+          listHtml += "</ul>";
+
+          body.innerHTML = listHtml;
+          btn.remove();
+
+          fetch(`/chart_data/{{ scan_uuid }}`)
+            .then((res) => res.json())
+            .then((chartData) => {
+              issuersChart.data.labels = chartData.issuers.labels;
+              issuersChart.data.datasets[0].data = chartData.issuers.data;
+              issuersChart.update();
+            });
+        }
+      });
+  }
+</script>
+{% endblock %}
